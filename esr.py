@@ -1,3 +1,5 @@
+""" Contains an ESR model
+"""
 import numpy as np
 
 __author__ = 'Michal Kononenko'
@@ -6,6 +8,10 @@ equilibrium_magnetic_field = np.array([0, 0, 1])
 
 
 class UnableToSolveSystemError(Exception):
+    pass
+
+
+class BadBlochSystemError(Exception):
     pass
 
 
@@ -104,7 +110,7 @@ class MagneticField(object):
         """
         if field_functions is None:
             self.field_functions = [
-                lambda t: np.cos(t), lambda t:np.sin(t), lambda t: 1
+                lambda t: np.cos(t), lambda t: np.sin(t), lambda t: 1
             ]
         else:
             self.field_functions = field_functions
@@ -126,18 +132,34 @@ class SignalAnalyzer(object):
     """ Contains methods to analyze the return signal given a field and a
     Bloch system
     """
-    def __init__(self, bloch, field):
-        self.bloch_system = bloch
-        self.field = field
+    def __init__(self, bloch_system):
+        if not bloch_system.is_solvable:
+            raise BadBlochSystemError('Cannot solve Bloch System')
+        self.bloch_system = bloch_system
+
+    @property
+    def time_list(self):
+        return self.bloch_system.time_list
+
+    @time_list.setter
+    def time_list(self, time_list):
+        self.bloch_system.time_list = time_list
 
     @property
     def driving_field(self):
-        return self.field.field_functions[0:2]
+        return self.bloch_system.magnetic_field.field_functions[0:2]
 
     @driving_field.setter
     def driving_field(self, field_functions):
-        funcs = self.field.field_functions
+        funcs = self.bloch_system.magnetic_field.field_functions
         funcs[0] = field_functions[0]
         funcs[1] = field_functions[1]
-        self.field.field_functions = funcs
+        self.bloch_system.magnetic_field.field_functions = funcs
 
+    @property
+    def solution(self):
+        return self.bloch_system.solve()
+
+    @property
+    def spectrum(self):
+        return np.fft.fft(self.solution)

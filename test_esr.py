@@ -1,7 +1,7 @@
 import numpy as np
 import unittest
 import esr
-import matplotlib.pyplot as plt
+
 
 __author__ = 'Michal Kononenko'
 
@@ -22,7 +22,7 @@ class TestBlochSystem(unittest.TestCase):
         self.system.gyromagnetic_ratio = self.gyromagnetic_ratio
         self.system.time_list = self.time_list
         self.system.initial_state = self.initial_state
-        self.system.t1 = 5e-9
+        self.system.t1 = 1e-8
         self.system.t2 = 5e-9
 
     def test_is_solvable(self):
@@ -31,8 +31,6 @@ class TestBlochSystem(unittest.TestCase):
     def test_solution(self):
         solution = self.system.solve()
         self.assertIsInstance(solution, np.ndarray)
-        plt.plot(solution.transpose())
-        plt.show()
 
 
 class TestEnvironmentMagneticField(unittest.TestCase):
@@ -60,4 +58,3 @@ class TestEnvironmentMagneticField(unittest.TestCase):
             field.__repr__(),
             '%s(%s)' % (field.__class__.__name__, field.field_functions)
         )
-
