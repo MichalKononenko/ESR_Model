@@ -6,6 +6,24 @@ import esr
 __author__ = 'Michal Kononenko'
 
 
+class TestMagneticField(unittest.TestCase):
+
+    def setUp(self):
+        self.field_functions = [
+            lambda t: np.sin(10*t), lambda t: np.cos(10*t), lambda t: 20
+        ]
+        self.field = esr.MagneticField(self.field_functions)
+
+    def test_constructor_with_custom_functions(self):
+        field = esr.MagneticField(self.field_functions)
+        self.assertEqual(field.field_functions, self.field_functions)
+
+    def test_call(self):
+        time = 1
+        expected_output = [f(time) for f in self.field_functions]
+        self.assertEqual(expected_output, self.field(time))
+
+
 class TestBlochSystem(unittest.TestCase):
 
     @classmethod
@@ -88,21 +106,3 @@ class TestSolveBlochSystem(TestBlochSystem):
         self.bloch.time_list = self.time_list
 
         self.assertTrue(self.bloch.is_solvable)
-
-
-class TestMagneticField(unittest.TestCase):
-
-    def setUp(self):
-        self.field_functions = [
-            lambda t: np.sin(10*t), lambda t: np.cos(10*t), lambda t: 20
-        ]
-        self.field = esr.MagneticField(self.field_functions)
-
-    def test_constructor_with_custom_functions(self):
-        field = esr.MagneticField(self.field_functions)
-        self.assertEqual(field.field_functions, self.field_functions)
-
-    def test_call(self):
-        time = 1
-        expected_output = [f(time) for f in self.field_functions]
-        self.assertEqual(expected_output, self.field(time))

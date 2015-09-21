@@ -5,8 +5,6 @@ import numpy as np
 
 __author__ = 'Michal Kononenko'
 
-equilibrium_magnetic_field = np.array([0, 0, 1])
-
 
 class UnableToSolveSystemError(Exception):
     pass
@@ -14,6 +12,43 @@ class UnableToSolveSystemError(Exception):
 
 class BadBlochSystemError(Exception):
     pass
+
+
+class MagneticField(object):
+    """
+    Models the magnetization vector :math:`\nathbb{B} = (B_x, B_y, B_z)`
+    perturbing the system for which a solution is to be found
+
+    :arg perturbation_functions: A list of three functions of x, y, and z,
+    that give the value of the magnetic field in each spatial dimension. Each
+    function must take in a floating-point time value as an argument and return
+    the strength of the magnetic field in Tesla. Defaults to
+
+    ..math::
+        \mathbb{B} = ( \cos(t), \sin(t), 1)
+    """
+    def __init__(self, field_functions=None):
+        """
+        Instantiates the variables listed above
+        """
+        if field_functions is None:
+            self.field_functions = [
+                lambda t: np.cos(t), lambda t: np.sin(t), lambda t: 1
+            ]
+        else:
+            self.field_functions = field_functions
+
+    def __call__(self, time):
+        """ Evaluates the magnetic field at a given time t
+        :param float time: The time value for which the field is to be
+        evaluated
+        :return: A list of the magnetic field components
+        """
+        return [f(time) for f in self.field_functions]
+
+    def __repr__(self):
+        return '%s(%s)' % (self.__class__.__name__,
+                           self.field_functions)
 
 
 class BlochSystem(object):
@@ -86,43 +121,6 @@ class BlochSystem(object):
 
     def get_equilibrium_field(self):
         return np.array([0, 0, 1e-3/self.t1])
-
-
-class MagneticField(object):
-    """
-    Models the magnetization vector :math:`\nathbb{B} = (B_x, B_y, B_z)`
-    perturbing the system for which a solution is to be found
-
-    :arg perturbation_functions: A list of three functions of x, y, and z,
-    that give the value of the magnetic field in each spatial dimension. Each
-    function must take in a floating-point time value as an argument and return
-    the strength of the magnetic field in Tesla. Defaults to
-
-    ..math::
-        \mathbb{B} = ( \cos(t), \sin(t), 1)
-    """
-    def __init__(self, field_functions=None):
-        """
-        Instantiates the variables listed above
-        """
-        if field_functions is None:
-            self.field_functions = [
-                lambda t: np.cos(t), lambda t: np.sin(t), lambda t: 1
-            ]
-        else:
-            self.field_functions = field_functions
-
-    def __call__(self, time):
-        """ Evaluates the magnetic field at a given time t
-        :param float time: The time value for which the field is to be
-        evaluated
-        :return: A list of the magnetic field components
-        """
-        return [f(time) for f in self.field_functions]
-
-    def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__,
-                           self.field_functions)
 
 
 class SignalAnalyzer(object):
