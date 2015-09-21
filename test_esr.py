@@ -7,54 +7,102 @@ __author__ = 'Michal Kononenko'
 
 
 class TestBlochSystem(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.gyromagnetic_ratio = 20e7
+        cls.time_list = np.linspace(0, 1e-7, 1000)
+
+        cls.field = esr.MagneticField()
+        cls.bloch = esr.BlochSystem(magnetic_field=cls.field,
+                                    gyromagnetic_ratio=cls.gyromagnetic_ratio,
+                                    time_list=cls.time_list)
+
+
+class TestIsSolvable(TestBlochSystem):
+
     def setUp(self):
-        self.field = esr.MagneticField()
-        self.field.field_functions = [
-            lambda t: 0, lambda t: 0, lambda t: 20 + np.cos(t)
-        ]
+        self.bloch.gyromagnetic_ratio = self.gyromagnetic_ratio
+        self.bloch.time_list = self.time_list
+        self.bloch.magnetic_field = self.field
 
-        self.gyromagnetic_ratio = 20e7
-        self.time_list = np.linspace(0, 1e-8, 10000)
-        self.initial_state = np.array([1e-3, 0, 0])
+        self.assertTrue(self.bloch.time_list is not None)
+        self.assertTrue(self.bloch.gyromagnetic_ratio is not None)
+        self.assertTrue(self.bloch.magnetic_field is not None)
 
-        self.system = esr.BlochSystem()
-        self.system.magnetic_field = self.field
-        self.system.gyromagnetic_ratio = self.gyromagnetic_ratio
-        self.system.time_list = self.time_list
-        self.system.initial_state = self.initial_state
-        self.system.t1 = 1e-8
-        self.system.t2 = 5e-9
+    def test_is_solvable_true(self):
 
-    def test_is_solvable(self):
-        self.assertTrue(self.system.is_solvable)
+        self.assertTrue(self.bloch.is_solvable)
 
-    def test_solution(self):
-        solution = self.system.solve()
-        self.assertIsInstance(solution, np.ndarray)
+    def test_is_solvable_false(self):
+        self.bloch.magnetic_field = None
+        self.assertFalse(self.bloch.is_solvable)
 
 
-class TestEnvironmentMagneticField(unittest.TestCase):
+class TestGetBlochMatrix(TestBlochSystem):
+
     def setUp(self):
-        self.perturbation_functions = [
-            lambda t: t**2, lambda t: 2*t, lambda t: np.sin(t)
+        self.time_as_list = list(self.time_list)
+        self.assertTrue(self.bloch.is_solvable)
+
+    def test_call_with_unsolvable_system(self):
+        self.bloch.magnetic_field = None
+
+        self.assertFalse(self.bloch.is_solvable)
+
+        with self.assertRaises(esr.UnableToSolveSystemError):
+            self.bloch.get_bloch_matrix(self.time_list)
+
+    def test_is_time_list(self):
+        self.assertIsNotNone(
+            self.bloch.get_bloch_matrix(self.time_as_list))
+
+    def tearDown(self):
+        self.bloch.magnetic_field = self.field
+        self.bloch.gyromagnetic_ratio = self.gyromagnetic_ratio
+        self.bloch.time_list = self.time_list
+
+
+class TestSolveBlochSystem(TestBlochSystem):
+
+    def setUp(self):
+        self.assertTrue(self.bloch.is_solvable)
+
+    def test_unable_to_solve(self):
+        self.bloch.magnetic_field = None
+        self.assertFalse(self.bloch.is_solvable)
+
+        with self.assertRaises(esr.UnableToSolveSystemError):
+            self.bloch.solve()
+
+    def test_solve(self):
+        solution = self.bloch.solve()
+
+        target_shape = (len(self.bloch.initial_state), len(self.time_list))
+
+        self.assertEqual(target_shape, solution.shape)
+
+    def tearDown(self):
+        self.bloch.magnetic_field = self.field
+        self.bloch.gyromagnetic_ratio = self.gyromagnetic_ratio
+        self.bloch.time_list = self.time_list
+
+        self.assertTrue(self.bloch.is_solvable)
+
+
+class TestMagneticField(unittest.TestCase):
+
+    def setUp(self):
+        self.field_functions = [
+            lambda t: np.sin(10*t), lambda t: np.cos(10*t), lambda t: 20
         ]
-        self.time = np.pi
+        self.field = esr.MagneticField(self.field_functions)
 
-    def test_constructor_no_arg(self):
-        expected_result = [
-            np.cos(self.time), np.sin(self.time), 1
-        ]
-        field = esr.MagneticField()
-        self.assertAlmostEqual(expected_result, field(self.time), 6)
+    def test_constructor_with_custom_functions(self):
+        field = esr.MagneticField(self.field_functions)
+        self.assertEqual(field.field_functions, self.field_functions)
 
-    def test_constructor_with_arg(self):
-        expected_result = [f(self.time) for f in self.perturbation_functions]
-        field = esr.MagneticField(self.perturbation_functions)
-        self.assertAlmostEqual(expected_result, field(self.time), 6)
-
-    def test_repr(self):
-        field = esr.MagneticField(self.perturbation_functions)
-        self.assertEqual(
-            field.__repr__(),
-            '%s(%s)' % (field.__class__.__name__, field.field_functions)
-        )
+    def test_call(self):
+        time = 1
+        expected_output = [f(time) for f in self.field_functions]
+        self.assertEqual(expected_output, self.field(time))

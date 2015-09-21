@@ -1,4 +1,5 @@
-""" Contains an ESR model
+""" Contains the model for an ESR spin system obeying the Bloch equations
+    as well as utilities for analyzing the resulting signal
 """
 import numpy as np
 
@@ -21,7 +22,7 @@ class BlochSystem(object):
     """
     def __init__(self, magnetic_field=None,
                  time_list=None,
-                 initial_state=np.zeros([1, 3]),
+                 initial_state=np.array([0, 0, 0]),
                  gyromagnetic_ratio=None,
                  t1=np.inf, t2=np.inf
                  ):
@@ -45,15 +46,11 @@ class BlochSystem(object):
         if not self.is_solvable:
             raise UnableToSolveSystemError('Unable to solve system')
 
-        if isinstance(time, list):
+        if not isinstance(time, np.ndarray):
             time = np.array(time)
 
-        if isinstance(time, np.ndarray):
-            t1 = self.t1*np.ones(time.shape)
-            t2 = self.t2*np.ones(time.shape)
-        else:
-            t1 = self.t1
-            t2 = self.t2
+        t1 = self.t1*np.ones(time.shape)
+        t2 = self.t2*np.ones(time.shape)
 
         gamma = self.gyromagnetic_ratio
         [bx, by, bz] = self.magnetic_field(time)
