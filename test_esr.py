@@ -1,7 +1,7 @@
+import mock
 import numpy as np
 import unittest
 import esr
-
 
 __author__ = 'Michal Kononenko'
 
@@ -22,6 +22,10 @@ class TestMagneticField(unittest.TestCase):
         time = 1
         expected_output = [f(time) for f in self.field_functions]
         self.assertEqual(expected_output, self.field(time))
+
+    def test_repr(self):
+        expected_repr = '%s(%s)' % (self.field.__class__.__name__, self.field_functions)
+        self.assertEqual(expected_repr, self.field.__repr__())
 
 
 class TestBlochSystem(unittest.TestCase):
@@ -106,3 +110,20 @@ class TestSolveBlochSystem(TestBlochSystem):
         self.bloch.time_list = self.time_list
 
         self.assertTrue(self.bloch.is_solvable)
+
+
+class TestSignalAnalyzer(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.mock_bloch_system = mock.MagicMock()
+        cls.mock_bloch_system.is_solvable = False
+
+    def test_constructor_bad_bloch(self):
+        with self.assertRaises(esr.BadBlochSystemError):
+            esr.SignalAnalyzer(self.mock_bloch_system)
+
+    def test_constructor_good_bloch(self):
+        self.mock_bloch_system.is_solvable = True
+        sig = esr.SignalAnalyzer(self.mock_bloch_system)
+        self.assertEqual(sig.bloch_system, self.mock_bloch_system)

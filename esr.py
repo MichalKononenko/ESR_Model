@@ -108,16 +108,35 @@ class BlochSystem(object):
 
         solution[:, 0] = self.initial_state
 
-        for index in xrange(0, len(self.time_list) - 1):
-            time = self.time_list[index]
-            bloch_matrix = self.get_bloch_matrix(time)
-            eq_field = self.get_equilibrium_field()
-
-            init = solution[:, index]
-
-            solution[:, index+1] = init + delta_t * (np.dot(init, bloch_matrix) + eq_field)
+        for index in xrange(1, len(self.time_list) - 1):
+            solution[:, index] = self._propagate_runge_kutta(
+                solution, self.time_list, index)
 
         return solution
+
+    def _propagate_runge_kutta(self, solution, time_list, index):
+        if index >= len(time_list):
+            raise UnableToSolveSystemError('Index exceeds time list')
+
+        time = time_list[index]
+        delta_t = self.time_list[index + 1] - self.time_list[index]
+
+        mag_vector = solution[:, index]
+
+        k1 = self._calculate_derivative(time, mag_vector)
+        k2 = self._calculate_derivative(
+            time + delta_t/2, mag_vector + delta_t/2 * k1)
+        k3 = self._calculate_derivative(
+            time + delta_t/2, mag_vector + delta_t/2 * k2
+        )
+        k4 = self._calculate_derivative(
+            time + delta_t, mag_vector + delta_t * k3
+        )
+        return mag_vector + delta_t / 6 * (k1 + 2*k2 + 2*k3 + k4)
+
+    def _calculate_derivative(self, time, mag_vector):
+        bloch_matrix = self.get_bloch_matrix(time)
+        return np.dot(mag_vector, bloch_matrix) + self.get_equilibrium_field()
 
     def get_equilibrium_field(self):
         return np.array([0, 0, 1e-3/self.t1])
@@ -157,4 +176,4 @@ class SignalAnalyzer(object):
 
     @property
     def spectrum(self):
-        return np.fft.fft(self.solution)
+        return np.fft.fftshift(self.solution)
