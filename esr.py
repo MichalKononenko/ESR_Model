@@ -46,6 +46,9 @@ class MagneticField(object):
         """
         return [f(time) for f in self.field_functions]
 
+    def __setitem__(self, key, value):
+        self.field_functions[key] = value
+
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__,
                            self.field_functions)
@@ -59,7 +62,8 @@ class BlochSystem(object):
                  time_list=None,
                  initial_state=np.array([0, 0, 0]),
                  gyromagnetic_ratio=None,
-                 t1=np.inf, t2=np.inf
+                 t1=np.inf, t2=np.inf,
+                 equilibrium_field=np.array([0, 0, 0])
                  ):
         self.magnetic_field = magnetic_field
         self.time_list = time_list
@@ -67,6 +71,7 @@ class BlochSystem(object):
         self.gyromagnetic_ratio = gyromagnetic_ratio
         self.t1 = t1
         self.t2 = t2
+        self.equilibrium_field = equilibrium_field
 
     @property
     def is_solvable(self):
@@ -102,14 +107,12 @@ class BlochSystem(object):
         if not self.is_solvable:
             raise UnableToSolveSystemError('Cannot solve system')
 
-        delta_t = self.time_list[1] - self.time_list[0]
-
         solution = np.zeros([len(self.initial_state), len(self.time_list)])
 
         solution[:, 0] = self.initial_state
 
-        for index in xrange(1, len(self.time_list) - 1):
-            solution[:, index] = self._propagate_runge_kutta(
+        for index in range(0, len(self.time_list) - 1):
+            solution[:, index + 1] = self._propagate_runge_kutta(
                 solution, self.time_list, index)
 
         return solution
@@ -132,14 +135,14 @@ class BlochSystem(object):
         k4 = self._calculate_derivative(
             time + delta_t, mag_vector + delta_t * k3
         )
-        return mag_vector + delta_t / 6 * (k1 + 2*k2 + 2*k3 + k4)
+        return mag_vector + (delta_t / 6) * (k1 + 2*k2 + 2*k3 + k4)
 
     def _calculate_derivative(self, time, mag_vector):
         bloch_matrix = self.get_bloch_matrix(time)
         return np.dot(mag_vector, bloch_matrix) + self.get_equilibrium_field()
 
     def get_equilibrium_field(self):
-        return np.array([0, 0, 1e-3/self.t1])
+        return self.equilibrium_field / self.t1
 
 
 class SignalAnalyzer(object):
@@ -176,4 +179,15 @@ class SignalAnalyzer(object):
 
     @property
     def spectrum(self):
-        return np.fft.fftshift(self.solution)
+        return np.fft.fft(self.solution)
+
+
+class OscillatingMagneticField(MagneticField):
+
+    def __init__(self, angular_frequency, base_field_strength):
+        field_functions = [
+            lambda t: np.cos(angular_frequency * t),
+            lambda t: np.sin(angular_frequency * t),
+            lambda t: base_field_strength * np.ones(t.shape)
+        ]
+        super(self.__class__).__init__(field_functions=field_functions)

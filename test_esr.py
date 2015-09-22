@@ -88,6 +88,7 @@ class TestGetBlochMatrix(TestBlochSystem):
 class TestSolveBlochSystem(TestBlochSystem):
 
     def setUp(self):
+        self.bloch.initial_state = np.array([1e-3, 0, 0])
         self.assertTrue(self.bloch.is_solvable)
 
     def test_unable_to_solve(self):
