@@ -2,6 +2,7 @@
     as well as utilities for analyzing the resulting signal
 """
 import numpy as np
+from scipy.signal.waveforms import square as square_wave
 
 __author__ = 'Michal Kononenko'
 
@@ -44,7 +45,7 @@ class MagneticField(object):
         evaluated
         :return: A list of the magnetic field components
         """
-        return [f(time) for f in self.field_functions]
+        return np.array([f(time) for f in self.field_functions])
 
     def __setitem__(self, key, value):
         self.field_functions[key] = value
@@ -144,6 +145,27 @@ class BlochSystem(object):
     def get_equilibrium_field(self):
         return self.equilibrium_field / self.t1
 
+    def get_larmor_frequency(self, time):
+        bz = self.magnetic_field(time)[2]
+        return self.gyromagnetic_ratio * bz / (2 * np.pi)
+
+    def get_steady_state_field(self):
+        omega_l = lambda time: self.get_larmor_frequency(time)
+        t1 = self.t1
+        t2 = self.t2
+
+        mx, my, mz = self.get_equilibrium_field() * self.t1
+
+        factor_x = lambda time: (omega_l(time) * t2**2)/ (1 + omega_l(time)**2 * t1 * t2)
+        factor_y = lambda time: (omega_l(time) * t2)/ (1 + omega_l(time)**2 *t1* t2)
+        factor_z = lambda time: (1 + t2 ** 2)/(1 + omega_l(time**2*t1*t2))
+
+        return [
+            lambda time: mx * factor_x(time) * np.cos(2 * np.pi * omega_l(time) * time),
+            lambda time: my * factor_y(time) * np.sin(2 * np.pi * omega_l(time) * time),
+            lambda time: mz * factor_z(time)
+        ]
+
 
 class SignalAnalyzer(object):
     """ Contains methods to analyze the return signal given a field and a
@@ -184,10 +206,38 @@ class SignalAnalyzer(object):
 
 class OscillatingMagneticField(MagneticField):
 
-    def __init__(self, angular_frequency, base_field_strength):
-        field_functions = [
-            lambda t: np.cos(angular_frequency * t),
-            lambda t: np.sin(angular_frequency * t),
+    def __init__(self, frequency, amplitude, base_field_strength,
+                 start_time=None, end_time=None):
+
+        self._field_functions = [
+            lambda t: np.multiply((amplitude * np.cos(2 * np.pi * frequency * t)),
+                             np.multiply(start_time <= t, t <= end_time)),
+            lambda t: np.zeros(t.shape),
             lambda t: base_field_strength * np.ones(t.shape)
         ]
-        super(self.__class__).__init__(field_functions=field_functions)
+
+        super(self.__class__, self).__init__(
+            field_functions=self._field_functions)
+
+
+class PulsedMagneticField(MagneticField):
+    def __init__(self, pulse_amplitude=0,
+                 pulse_length=1,
+                 off_pulse_length=1,
+                 base_field_strength=0,
+                 frequency=0):
+        period = pulse_length + off_pulse_length
+        duty_cycle = pulse_length / period
+
+        square_component = lambda t: 0.5 * pulse_amplitude * square_wave(
+            np.pi/period * t, duty=duty_cycle
+        ) + pulse_amplitude / 2
+
+        sine_component = lambda t: np.cos(2 * np.pi * frequency * t)
+
+        field_functions = [
+            lambda t: np.multiply(square_component(t), sine_component(t)),
+            lambda t: np.zeros(t.shape),
+            lambda t: base_field_strength * np.ones(t.shape)
+        ]
+        super(self.__class__, self).__init__(field_functions)

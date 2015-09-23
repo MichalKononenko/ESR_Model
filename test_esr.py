@@ -20,8 +20,8 @@ class TestMagneticField(unittest.TestCase):
 
     def test_call(self):
         time = 1
-        expected_output = [f(time) for f in self.field_functions]
-        self.assertEqual(expected_output, self.field(time))
+        expected_output = np.array([f(time) for f in self.field_functions])
+        np.testing.assert_array_equal(expected_output, self.field(time))
 
     def test_repr(self):
         expected_repr = '%s(%s)' % (self.field.__class__.__name__, self.field_functions)
@@ -128,3 +128,25 @@ class TestSignalAnalyzer(unittest.TestCase):
         self.mock_bloch_system.is_solvable = True
         sig = esr.SignalAnalyzer(self.mock_bloch_system)
         self.assertEqual(sig.bloch_system, self.mock_bloch_system)
+
+
+class TestOscillatingMagneticField(unittest.TestCase):
+
+    def setUp(self):
+        self.time_list = np.linspace(0, 1e-7, 1000)
+
+        self.frequency = 20e7
+        self.x_axis_pulse_amplitude = 1
+        self.z_axis_field_strength = 1
+        self.pulse_start_time = 0
+        self.pulse_end_time = 1e-8
+
+        self.magnetic_field = esr.OscillatingMagneticField(
+            self.frequency, self.x_axis_pulse_amplitude,
+            self.z_axis_field_strength,
+            self.pulse_start_time, self.pulse_end_time
+        )
+
+    def test_field_functions(self):
+        field_functions = self.magnetic_field(self.time_list)
+        self.assertEqual(field_functions.shape, (3, 1000))
