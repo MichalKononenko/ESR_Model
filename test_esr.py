@@ -113,6 +113,18 @@ class TestSolveBlochSystem(TestBlochSystem):
         self.assertTrue(self.bloch.is_solvable)
 
 
+class TestGetLarmorFrequency(TestBlochSystem):
+
+    def setUp(self):
+        self.time = 1
+
+    def test_get_larmor_freq(self):
+        expected_freq = self.gyromagnetic_ratio * self.field(self.time)[2] / \
+                        (2 * np.pi)
+        self.assertEqual(
+            expected_freq, self.bloch.get_larmor_frequency(self.time))
+
+
 class TestSignalAnalyzer(unittest.TestCase):
 
     @classmethod
