@@ -29,20 +29,27 @@ class TestProgramConstructor(unittest.TestCase):
 
     def test_constructor_default_args(self):
         program = fp.Program()
-        self.assertFalse(program.children)
+        self.assertIsNone(program.previous_program)
+        self.assertIsNone(program.next_program)
 
         expected_initial_state = np.array([0, 0, 0])
         np_test.assert_array_equal(expected_initial_state,
                                    program.initial_state)
 
     def test_constructor_non_default_args(self):
-        child_program = fp.Program()
+        previous_program = fp.Program()
+        previous_program.initial_state = np.array([1, 1, 1])
+        next_program = fp.Program()
         initial_state = np.array([1, 1, 1])
 
-        parent_program = fp.Program(children=(child_program,),
-                                    initial_state=initial_state)
+        parent_program = fp.Program(
+            next_program=next_program, previous_program=previous_program,
+            initial_state=initial_state
+        )
 
-        self.assertEqual(child_program, parent_program.children[0])
+        self.assertEqual(previous_program, parent_program.previous_program)
+        self.assertEqual(next_program, parent_program.next_program)
+
         np_test.assert_array_equal(initial_state, parent_program.initial_state)
 
 
@@ -69,13 +76,8 @@ class TestProgramAdd(TestProgram):
     def test_add_program(self):
         new_program = self.program + self.program_to_add
 
-        expected_children = (self.program, self.program_to_add)
-
-        np_test.assert_array_equal(
-            new_program.initial_state, self.program.initial_state)
-        self.assertEqual(self.program.end_time, self.program_to_add.start_time)
-
-        self.assertEqual(expected_children, new_program.children)
+        self.assertIsNone(new_program.previous_program)
+        self.assertEqual(new_program.next_program, self.program_to_add)
 
     def tearDown(self):
         self.program = fp.Program(initial_state=self.initial_state)
@@ -84,9 +86,9 @@ class TestProgramAdd(TestProgram):
 class TestProgramRepr(TestProgram):
 
     def setUp(self):
-        self.expected_repr = '%s(children=%s, initial_state=%s)' % (
-            self.program.__class__.__name__, self.program.children,
-            self.program.initial_state
+        self.expected_repr = '%s(previous_program=%s, next_program=%s initial_state=%s)' % (
+            self.program.__class__.__name__, self.program.previous_program,
+            self.program.next_program, self.program.initial_state
         )
 
     def test_repr(self):
