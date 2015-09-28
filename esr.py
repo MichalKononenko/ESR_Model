@@ -335,6 +335,16 @@ class SignalAnalyzer(object):
         """
         return np.fft.fft(self.solution)
 
+    @property
+    def multiplication_time_domain(self):
+        return np.multiply(self.bloch_system.magnetic_field(self.time_list),
+                           self.solution)
+
+    @property
+    def multiplication_spectrum(self):
+        b_field = self.bloch_system.magnetic_field(self.time_list)
+        return np.fft.fft(np.multiply(b_field, self.solution))
+
 
 class OscillatingMagneticField(MagneticField):
 
@@ -362,7 +372,7 @@ class PulsedMagneticField(MagneticField):
         duty_cycle = pulse_length / period
 
         def _square_component(time_list):
-            return 0.5 * pulse_amplitude * square_wave(np.pi/period * time_list, duty=duty_cycle)
+            return 0.5 * pulse_amplitude * square_wave(np.pi/period * time_list, duty=duty_cycle) + 0.5
 
         def _sine_component(time_list):
             return np.cos(2 * np.pi * frequency * time_list)

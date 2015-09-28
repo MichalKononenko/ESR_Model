@@ -125,7 +125,7 @@ class TestGetLarmorFrequency(TestBlochSystem):
             expected_freq, self.bloch.get_larmor_frequency(self.time))
 
 
-class TestSignalAnalyzer(unittest.TestCase):
+class TestSignalAnalyzerConstructor(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -140,6 +140,7 @@ class TestSignalAnalyzer(unittest.TestCase):
         self.mock_bloch_system.is_solvable = True
         sig = esr.SignalAnalyzer(self.mock_bloch_system)
         self.assertEqual(sig.bloch_system, self.mock_bloch_system)
+
 
 
 class TestOscillatingMagneticField(unittest.TestCase):
